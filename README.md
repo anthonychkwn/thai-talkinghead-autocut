@@ -56,7 +56,7 @@ Word timings come from the original timeline. After cutting, every timestamp pas
 | step | output |
 |---|---|
 | `transcribe.py` | `audio16k.wav`, `audio16k_dn.wav`, `words.json`, `timedwords.json`, `tokens3.json`, `transcript.txt` |
-| `detect_fillers.py` | `fillers.json` — `[[start, end], ...]` on the original timeline |
+| `detect_fillers.py` | `fillers.json`, a list of `[[start, end], ...]` on the original timeline |
 | `cut.py` | `keep_spans.json`, and the edited MP4 |
 | `captions.py` | an SRT on the edited timeline |
 
