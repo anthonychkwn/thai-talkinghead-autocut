@@ -30,8 +30,6 @@ import os
 import re
 import sys
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-
 # Thai vowels that get held during hesitation.
 DRAWN_VOWELS = set("าอะเแโใไีืูึ")
 # Tone marks and the mai-han-akat, stripped before the vowel test.
@@ -137,4 +135,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # UTF-8 stdout so Thai prints survive Windows consoles; done here rather
+    # than at import time so the module stays importable as a library.
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     main()

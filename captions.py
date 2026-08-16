@@ -29,9 +29,10 @@ import json
 import os
 import sys
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-
-LEAD_IN = set("คือ ถ้า แล้ว เพราะ ก็ แต่ และ ที่ ซึ่ง กับ หรือ พอ จน ว่า ใน ของ ให้ เรา ผม".split())
+# True connectives only. Subject pronouns (ผม เรา) are NOT lead-ins: ending a
+# line on the subject and starting the next on the predicate is a natural Thai
+# break, and treating pronouns as unbreakable makes some sentences unsolvable.
+LEAD_IN = set("คือ ถ้า แล้ว เพราะ ก็ แต่ และ ที่ ซึ่ง กับ หรือ พอ จน ว่า ใน ของ ให้".split())
 ENCLITIC = set("ไหม มั้ย นะ น่ะ ครับ คับ ค่ะ คะ ล่ะ หรอ เหรอ สิ ซิ แหละ ไง ด้วย เลย กัน อีก".split())
 
 
@@ -64,31 +65,61 @@ def remap(words, keeps):
 
 
 def pack(tokens, max_chars):
-    """Greedy-pack tokens into lines, then apply the lead-in / enclitic rules."""
+    """Greedy-pack tokens into lines, then apply the lead-in / enclitic rules.
+
+    The rules run to a fixed point: moving a word can expose a new violation
+    (splitting "ผมว่าเพราะ" after moving เพราะ leaves ว่า stranded at the line
+    end), so a single pass is not enough. The two rules cannot ping-pong the
+    same word because the lead-in and enclitic sets are disjoint; the loop cap
+    is just a backstop.
+    """
     lines, cur = [], ""
     for t in tokens:
         if cur and visible_len(cur) + visible_len(t) > max_chars:
-            lines.append(cur)
-            cur = t
+            # Peel trailing lead-ins off the full line so the break lands
+            # before them, as long as they fit on the next line with t.
+            ctoks = tokenize(cur)
+            carry = []
+            while ctoks and ctoks[-1] in LEAD_IN and \
+                    sum(visible_len(x) for x in carry) + visible_len(ctoks[-1]) \
+                    + visible_len(t) <= max_chars + 4:
+                carry.insert(0, ctoks.pop())
+            if ctoks:
+                lines.append("".join(ctoks))
+            cur = "".join(carry) + t
         else:
             cur += t
     if cur:
         lines.append(cur)
 
-    # a line must not END on a lead-in word: push it to the next line
-    for i in range(len(lines) - 1):
-        toks = tokenize(lines[i])
-        if toks and toks[-1] in LEAD_IN and visible_len(lines[i]) > visible_len(toks[-1]):
-            lines[i] = "".join(toks[:-1])
-            lines[i + 1] = toks[-1] + lines[i + 1]
+    for _ in range(10):
+        lines = [ln for ln in lines if ln.strip()]
+        changed = False
 
-    # a line must not START on an enclitic: pull it back to the previous line
-    for i in range(1, len(lines)):
-        toks = tokenize(lines[i])
-        if toks and toks[0] in ENCLITIC \
-                and visible_len(lines[i - 1]) + visible_len(toks[0]) <= max_chars + 4:
-            lines[i - 1] += toks[0]
-            lines[i] = "".join(toks[1:])
+        # a line must not END on a lead-in word: push it to the next line
+        for i in range(len(lines) - 1):
+            toks = tokenize(lines[i])
+            if len(toks) > 1 and toks[-1] in LEAD_IN:
+                lines[i] = "".join(toks[:-1])
+                lines[i + 1] = toks[-1] + lines[i + 1]
+                changed = True
+
+        # a line must not START on an enclitic: pull it back to the previous
+        # line. A line made ONLY of enclitics is pulled unconditionally; a
+        # slightly over-long line beats an orphaned "กัน" on screen.
+        for i in range(1, len(lines)):
+            toks = tokenize(lines[i])
+            if not toks or not lines[i - 1]:
+                continue
+            fits = visible_len(lines[i - 1]) + visible_len(toks[0]) <= max_chars + 4
+            all_enclitic = all(x in ENCLITIC for x in toks)
+            if toks[0] in ENCLITIC and (fits or all_enclitic):
+                lines[i - 1] += toks[0]
+                lines[i] = "".join(toks[1:])
+                changed = True
+
+        if not changed:
+            break
 
     return [ln for ln in lines if ln.strip()]
 
@@ -171,4 +202,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # UTF-8 stdout for Thai on Windows consoles; kept out of import time so
+    # the module stays importable as a library.
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     main()

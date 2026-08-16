@@ -1,5 +1,7 @@
 # thai-talkinghead-autocut
 
+[![CI](https://github.com/anthonychkwn/thai-talkinghead-autocut/actions/workflows/ci.yml/badge.svg)](https://github.com/anthonychkwn/thai-talkinghead-autocut/actions/workflows/ci.yml)
+
 Automatically tighten a Thai talking-head video: remove dead air, stutters and hesitation fillers, then generate captions that stay locked to the voice.
 
 Built for the case where someone records themselves speaking Thai straight to camera, one long take, no script, and the raw file is 30-40% pauses and "เอ่อ".

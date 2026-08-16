@@ -33,8 +33,6 @@ import os
 import subprocess
 import sys
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-
 
 def extract_audio(src, work):
     """16 kHz mono for whisper, plus a denoised copy for the filler pass."""
@@ -151,4 +149,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # UTF-8 stdout for Thai on Windows consoles; kept out of import time so
+    # the module stays importable as a library.
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     main()

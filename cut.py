@@ -31,8 +31,6 @@ import re
 import subprocess
 import sys
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-
 
 def probe_duration(path):
     out = subprocess.check_output(
@@ -175,4 +173,7 @@ def main():
 
 
 if __name__ == "__main__":
+    # UTF-8 stdout for Thai on Windows consoles; kept out of import time so
+    # the module stays importable as a library.
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     main()

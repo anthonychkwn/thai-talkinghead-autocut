@@ -1,0 +1,22 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # The unit tests cover the pure logic (filler detection, cut planning,
+      # caption remapping, Thai line packing). Whisper and ffmpeg are only
+      # needed at runtime, so CI installs just what the tested code imports.
+      - name: Install test dependencies
+        run: pip install pythainlp pytest
+      - name: Run tests
+        run: pytest -q
