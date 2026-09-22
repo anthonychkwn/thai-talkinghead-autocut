@@ -139,3 +139,23 @@ def test_enclitic_never_starts_a_line():
 def test_srt_time_format():
     assert captions.srt_time(0.0) == "00:00:00,000"
     assert captions.srt_time(3661.5) == "01:01:01,500"
+
+
+def test_cues_never_overlap_when_a_caption_splits_into_short_lines():
+    # A dense caption re-breaks into several lines, each shorter than the 0.4s
+    # readability floor. Stretching them to that floor must not push a cue past
+    # the start of the next one, or the player draws two captions at once.
+    words = [w("ขอบคุณมากเลยนะครับทุกคน", 0.0, 0.6), w("สวัสดี", 0.65, 1.0)]
+    caps = captions.group_words(words, max_chars=8, max_gap=0.5)
+    assert len(caps) > 2                      # the first word really did split
+    for a, b in zip(caps, caps[1:]):
+        assert a["e"] <= b["t"] + 1e-6, f"cue {a['text']} runs into {b['text']}"
+        assert a["e"] > a["t"]
+
+
+def test_short_cue_still_stretches_into_the_gap_after_it():
+    # Nothing follows for a while, so the floor should be honoured in full.
+    words = [w("ครับ", 1.0, 1.1)]
+    caps = captions.group_words(words, max_chars=16, max_gap=0.5)
+    assert len(caps) == 1
+    assert caps[0]["e"] - caps[0]["t"] >= 0.4 - 1e-6

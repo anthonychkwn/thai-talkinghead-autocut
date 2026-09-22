@@ -35,6 +35,8 @@ import sys
 LEAD_IN = set("คือ ถ้า แล้ว เพราะ ก็ แต่ และ ที่ ซึ่ง กับ หรือ พอ จน ว่า ใน ของ ให้".split())
 ENCLITIC = set("ไหม มั้ย นะ น่ะ ครับ คับ ค่ะ คะ ล่ะ หรอ เหรอ สิ ซิ แหละ ไง ด้วย เลย กัน อีก".split())
 
+MIN_CUE = 0.4   # shortest a caption may stay on screen, seconds
+
 
 def visible_len(s):
     return len(s.replace(" ", ""))
@@ -159,7 +161,15 @@ def group_words(words, max_chars, max_gap):
             t0 = c["t"] + span * (acc / total)
             acc += visible_len(p)
             t1 = c["t"] + span * (acc / total)
-            out.append({"t": round(t0, 3), "e": round(max(t1, t0 + 0.4), 3), "text": p})
+            out.append({"t": round(t0, 3), "e": round(t1, 3), "text": p})
+
+    # A cue below MIN_CUE flashes past unread, so stretch it - but only into the
+    # silence before the next cue. Dense speech re-broken into four short lines
+    # would otherwise give every line the full floor and leave three of them on
+    # screen at once, which reads far worse than one short line.
+    for i, c in enumerate(out):
+        ceiling = out[i + 1]["t"] if i + 1 < len(out) else c["e"] + MIN_CUE
+        c["e"] = round(min(max(c["e"], c["t"] + MIN_CUE), max(ceiling, c["e"])), 3)
     return out
 
 
